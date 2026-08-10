@@ -1,0 +1,24 @@
+cat > .gitignore << 'EOF'
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+terraform.tfvars
+
+# Node
+node_modules/
+npm-debug.log
+
+# Env / secrets
+.env
+*.pem
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Lambda build artifacts
+*.zip
+EOF
