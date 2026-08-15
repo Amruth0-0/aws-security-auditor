@@ -1,11 +1,7 @@
-cat > .gitignore << 'EOF'
-
 # Terraform
 .terraform/
 *.tfstate
 *.tfstate.*
-.terraform.lock.hcl
-terraform.tfvars
 
 # Node
 node_modules/
@@ -21,4 +17,3 @@ Thumbs.db
 
 # Lambda build artifacts
 *.zip
-EOF
