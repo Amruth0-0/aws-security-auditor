@@ -1,4 +1,4 @@
-# 🛡️ VanGuard — Automated AWS Security Auditor
+# 🛡️ ChainAudit — Automated AWS Security Auditor
 
 ### *First Line of Defense for Your Cloud*
 
