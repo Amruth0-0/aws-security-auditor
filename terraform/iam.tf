@@ -38,14 +38,14 @@ data "aws_iam_policy_document" "lambda_readonly" {
 
   statement {
     effect    = "Allow"
-    actions   = ["dynamodb:PutItem", "dynamodb:GetItem"]
-    resources = ["*"]
+    actions   = ["dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:Scan", "dynamodb:Query"]
+    resources = [aws_dynamodb_table.findings.arn, "${aws_dynamodb_table.findings.arn}/index/*"]
   }
 
   statement {
     effect = "Allow"
     actions   = ["sns:Publish"]
-    resources = ["*"] //Todo
+    resources = [aws_sns_topic.alerts.arn] 
   }
 
   statement {

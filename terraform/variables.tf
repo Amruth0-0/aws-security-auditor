@@ -21,3 +21,15 @@ variable "my_ip" {
     type = string
     sensitive = true
 }
+
+variable "project_name" {
+    description = "predifined project name for the resources"
+    type = string
+    default = "chainbreak"
+}
+
+variable "alert_email" {
+    description = "Email address for SNS alert notifications"
+    type = string
+    sensitive = true
+}
