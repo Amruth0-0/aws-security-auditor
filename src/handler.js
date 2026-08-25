@@ -22,7 +22,7 @@ export const handler = async (event) => {
             await save(finding);
         }
 
-        const openFindings = await getByStatus("OPEN");
+        const openFindings = allFindings.filter(f => f.status === "OPEN");
         console.log(`🔍 Found ${openFindings.length} OPEN findings`);
 
         if (openFindings.length > 0) {
