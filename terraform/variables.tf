@@ -33,3 +33,15 @@ variable "alert_email" {
     type = string
     sensitive = true
 }
+
+variable "rate_expression" {
+    description = "EventBridge Schedule Expression eg: rate (1 hour)"
+    type = string
+    default = "rate(5 minutes)"
+}
+
+variable "enable_lambda" {
+    description = "Enable or disable the Lambda function"
+    type        = bool
+    default     = false
+}
