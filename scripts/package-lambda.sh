@@ -41,6 +41,12 @@ npm install --production
 # 4. Create ZIP from the build directory
 echo -e "${YELLOW}Creating ZIP archive...${NC}"
 mkdir -p "$DIST_DIR"
+# CHANGED (B6): delete the old archive first.
+# `zip -r` APPENDS to an existing archive, it does not replace it. The build
+# directory was cleaned every run but dist/lambda.zip never was, so any file
+# deleted or renamed in src/ stayed in the deployed artifact forever. That is the
+# "it works locally but the Lambda is running old code" afternoon.
+rm -f "$LAMBDA_ZIP"
 zip -r "$LAMBDA_ZIP" . -x "*.git*" "*.env*" "test/*" "*.swp"
 
 # 5. Show contents

@@ -1,13 +1,14 @@
-process.env.FINDINGS_TABLE_NAME = "chainbreak-findings"
-const { save, getAll, getByStatus} = await import("../../src/storage/findingsRepo.js");
+import { save, getAll, getByStatus } from "../../src/storage/findingsRepo.js";
 
-// Create a fake finding object (simulating what sgScanner would produce)
 const fakeFinding = {
+    findingId: "securityGroup#sg-test123#OPEN_PORT#22#tcp#0.0.0.0/0",
     type: "OPEN_PORT",
     resourceType: 'securityGroup',
     resourceId: 'sg-test123',
     port: 22,
-    protocol: 'tcp',
+    ipProtocol: 'tcp',
+    fromPort: 22,
+    toPort: 22,
     cidr: '0.0.0.0/0',
     autoRemediable: true
 }

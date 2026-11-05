@@ -1,15 +1,17 @@
-process.env.FINDINGS_TABLE_NAME = "chainbreak-findings";
-const { save, getAll, getByStatus } = await import("../../src/storage/findingsRepo.js");
+import { save, getAll, getByStatus } from "../../src/storage/findingsRepo.js";
 
 console.log("==== Testing getByStatus() with GSI ====");
 
 // Create a test finding (status will default to "OPEN")
 const testFinding = {
+    findingId: "securityGroup#sg-gsi-test#OPEN_PORT#22#tcp#0.0.0.0/0",
     type: "OPEN_PORT",
     resourceType: "securityGroup",
     resourceId: "sg-gsi-test",
     port: 22,
-    protocol: "tcp",
+    ipProtocol: "tcp",
+    fromPort: 22,
+    toPort: 22,
     cidr: "0.0.0.0/0",
     autoRemediable: true
 };

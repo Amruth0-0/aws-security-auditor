@@ -1,35 +1,39 @@
-import { RDSClient, DescribeDBInstancesCommand } from "@aws-sdk/client-rds";
+import { RDSClient, paginateDescribeDBInstances } from "@aws-sdk/client-rds";
+import config from "../config/env.js";
 
 
-// Scans all RDS instances for unencrypted storage.
+function buildFindingId(dbInstanceIdentifier) {
+  return `rdsInstance#${dbInstanceIdentifier}#UNENCRYPTED_RDS`;
+}
 
 export async function scan() {
-  const client = new RDSClient({ 
-    region: process.env.AWS_REGION || "us-east-1" 
-  });
-  
+  const client = new RDSClient({ region: config.region });
+
   const findings = [];
 
   try {
-    const command = new DescribeDBInstancesCommand({});
-    const response = await client.send(command);
-   
-    for (const instance of response.DBInstances || []) {
-      if (instance.StorageEncrypted === false) {
-        findings.push({
-          type: "UNENCRYPTED_RDS",
-          resourceId: instance.DBInstanceIdentifier,
-          engine: instance.Engine,
-          engineVersion: instance.EngineVersion,
-          instanceClass: instance.DBInstanceClass,
-          storageType: instance.StorageType,
-          allocatedStorage: instance.AllocatedStorage,
-          autoRemediable: false,  
-          description: `RDS instance ${instance.DBInstanceIdentifier} has unencrypted storage (StorageEncrypted: false)`
-        });
+    const pages = paginateDescribeDBInstances({ client }, {});
+
+    for await (const page of pages) {
+      for (const instance of page.DBInstances || []) {
+        if (instance.StorageEncrypted === false) {
+          findings.push({
+            findingId: buildFindingId(instance.DBInstanceIdentifier),
+            resourceType: "rdsInstance",
+            type: "UNENCRYPTED_RDS",
+            resourceId: instance.DBInstanceIdentifier,
+            engine: instance.Engine,
+            engineVersion: instance.EngineVersion,
+            instanceClass: instance.DBInstanceClass,
+            storageType: instance.StorageType,
+            allocatedStorage: instance.AllocatedStorage,
+            autoRemediable: false,
+            description: `RDS instance ${instance.DBInstanceIdentifier} has unencrypted storage (StorageEncrypted: false)`
+          });
+        }
       }
     }
-    
+
     return findings;
   } catch (error) {
     console.error("Error scanning RDS instances:", error.message);
