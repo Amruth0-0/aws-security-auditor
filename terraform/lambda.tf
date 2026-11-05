@@ -12,6 +12,10 @@ resource "aws_lambda_function" "auditor" {
       variables = {
         FINDINGS_TABLE_NAME = aws_dynamodb_table.findings.name
         SNS_TOPIC_ARN = aws_sns_topic.alerts.arn
+        REMEDIATION_ENABLED   = tostring(var.enable_remediation)
+        REMEDIATION_WHITELIST = jsonencode(var.remediation_whitelist)
+        EXCLUDED_SG_IDS       = join(",", var.excluded_sg_ids)
+        SEVERITY_THRESHOLD    = tostring(var.severity_threshold)
       }
     }
 

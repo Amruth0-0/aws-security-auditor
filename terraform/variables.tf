@@ -45,3 +45,33 @@ variable "enable_lambda" {
     type        = bool
     default     = false
 }
+
+variable "enable_remediation" {
+    description = "Allow the auditor to actually revoke security group rules. False = dry run only."
+    type        = bool
+    default     = false
+}
+
+variable "remediation_whitelist" {
+    description = "Ports and CIDRs eligible for automatic revocation"
+    type = object({
+        ports = list(number)
+        cidrs = list(string)
+    })
+    default = {
+        ports = [22, 3389]
+        cidrs = ["0.0.0.0/0"]
+    }
+}
+
+variable "excluded_sg_ids" {
+    description = "Security group IDs that are never auto-remediated"
+    type        = list(string)
+    default     = []
+}
+
+variable "severity_threshold" {
+    description = "Blast radius score at which a finding is escalated instead of auto-fixed"
+    type        = number
+    default     = 12
+}
