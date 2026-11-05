@@ -1,9 +1,8 @@
-process.env.FINDINGS_TABLE_NAME = "chainbreak-findings";
-
 import { scan as scanSG } from "../../src/scanners/sgScanner.js";
 import { scan as scanS3 } from "../../src/scanners/s3Scanner.js";
 import { scan as scanRDS } from "../../src/scanners/rdsScanner.js";
 import { save, getAll, getByStatus } from "../../src/storage/findingsRepo.js";
+import config from "../../src/config/env.js";
 
 /**
  * Run all scanners locally against your real AWS account.
@@ -82,13 +81,13 @@ async function main() {
     }
 
     console.log("\n" + "=".repeat(60));
-    console.log("✅ Local scan with storage complete!"); 
-    console.log(`   Findings saved to: chainbreak-findings`); 
+    console.log("✅ Local scan with storage complete!");
+    console.log(`   Findings saved to: ${config.dynamodbTableName}`);
 
-    
+    const table = config.dynamodbTableName;
     console.log("\n🧹 Clean up (optional):");
     console.log("   To delete all findings from the table:");
-    console.log("   aws dynamodb scan --table-name chainbreak-findings --projection-expression findingId --query 'Items[*].findingId.S' --output text | tr '\\t' '\\n' | while read id; do aws dynamodb delete-item --table-name chainbreak-findings --key \"{\\\"findingId\\\":{\\\"S\\\":\\\"$id\\\"}}\"; done");
+    console.log(`   aws dynamodb scan --table-name ${table} --projection-expression findingId --query 'Items[*].findingId.S' --output text | tr '\\t' '\\n' | while read id; do aws dynamodb delete-item --table-name ${table} --key "{\\"findingId\\":{\\"S\\":\\"$id\\"}}"; done`);
 
   } catch (error) {
     console.error("\n❌ Scan failed:", error.message);

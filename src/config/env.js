@@ -1,27 +1,52 @@
-const REQUIRED = {
-    FINDINGS_TABLE_NAME: process.env.FINDINGS_TABLE_NAME,
-    SNS_TOPIC_ARN: process.env.SNS_TOPIC_ARN
+/**
+ * Centralised environment config — the ONLY place in the codebase that reads
+ * process.env directly (Builder's Manual, src/config/env.js).
+ */
+
+function required(name) {
+    const value = process.env[name];
+    if (!value) {
+        throw new Error(`Missing required environment variable: ${name}`);
+    }
+    return value;
 }
 
-Object.entries(REQUIRED).forEach(([key, value]) => {
-    if (!value) {
-        throw new Error(`Missing required environment variable: ${key}`);
+function parseExcludedSgIds() {
+    return process.env.EXCLUDED_SG_IDS
+        ? process.env.EXCLUDED_SG_IDS.split(',').map(s => s.trim()).filter(Boolean)
+        : [];
+}
+
+function parseRemediationWhitelist() {
+    if (!process.env.REMEDIATION_WHITELIST) {
+        return {};
     }
-});
-
-const EXCLUDED_SG_IDS = process.env.EXCLUDED_SG_IDS
-    ? process.env.EXCLUDED_SG_IDS.split(',').map(s => s.trim()) : [];
-
-const REMEDIATION_WHITELIST = process.env.REMEDIATION_WHITELIST
-    ? JSON.parse(process.env.REMEDIATION_WHITELIST)
-    : {};
+    try {
+        return JSON.parse(process.env.REMEDIATION_WHITELIST);
+    } catch (error) {
+        throw new Error(`REMEDIATION_WHITELIST is not valid JSON: ${error.message}`);
+    }
+}
 
 export default Object.freeze({
     region: process.env.AWS_REGION || 'us-east-1',
-    dynamodbTableName: REQUIRED.FINDINGS_TABLE_NAME,
-    excludedSecurityGroupIds: EXCLUDED_SG_IDS,
-    remediationWhitelist: REMEDIATION_WHITELIST,
+
+    get dynamodbTableName() {
+        return required('FINDINGS_TABLE_NAME');
+    },
+
+    get snsTopicArn() {
+        return required('SNS_TOPIC_ARN');
+    },
+
+    get excludedSecurityGroupIds() {
+        return parseExcludedSgIds();
+    },
+
+    get remediationWhitelist() {
+        return parseRemediationWhitelist();
+    },
+
     isProduction: process.env.NODE_ENV === 'production',
     isTest: process.env.NODE_ENV === 'test',
-    snsTopicArn: REQUIRED.SNS_TOPIC_ARN,
 });
