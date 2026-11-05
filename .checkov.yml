@@ -1,0 +1,101 @@
+# ============================================================================
+# Checkov configuration
+# ============================================================================
+# The IaC scan in CI is BLOCKING. Every exception is listed here with a reason,
+# so anything NEW fails the build rather than being lost in a soft-fail log.
+#
+# Baseline when this list was written: 59 passed, 28 failed, 0 skipped.
+# Re-triage with:  checkov -d terraform --framework terraform --compact
+#
+# Three kinds of entry below: deliberate design decisions, constraints imposed
+# by the $0/month requirement, and one genuine Checkov false positive.
+# ============================================================================
+
+directory:
+  - terraform
+
+framework:
+  - terraform
+
+compact: true
+
+skip-check:
+  # --- Deliberate architecture decisions ------------------------------------
+
+  # Lambda is intentionally NOT in the VPC. A VPC-attached Lambda needs a NAT
+  # Gateway (~$32/month) or VPC endpoints to reach DynamoDB and SNS. The VPC
+  # here is the target being scanned, not the host.
+  - CKV_AWS_117
+
+  # Public subnets assign public IPs. That is what makes them public subnets,
+  # and the auditor needs internet-facing resources to find.
+  - CKV_AWS_130
+
+  # The demo security groups are deliberately attached to nothing — they exist
+  # so a misconfiguration can be created by hand during the demo.
+  - CKV2_AWS_5
+
+  # No Dead Letter Queue. Async retries are deliberately capped at 0 and a
+  # failed scan is recorded as a SCANNER_ERROR finding instead, so failures are
+  # visible in DynamoDB and the alert rather than parked in a queue nobody
+  # reads.
+  - CKV_AWS_116
+
+  # No reserved concurrency limit. One scheduled invocation at a time; there is
+  # no concurrency to throttle.
+  - CKV_AWS_115
+
+  # Egress to 0.0.0.0/0. The auditor and demo instances need outbound access to
+  # reach the AWS APIs.
+  - CKV_AWS_382
+
+  # NACL ingress on 1024-65535 covers 3389. NACLs are STATELESS, so the
+  # ephemeral port range must be open for return traffic on connections this
+  # VPC initiated. Narrowing it would break outbound replies.
+  - CKV_AWS_231
+
+  # The read-only scanner actions (ec2:Describe*, s3:List*, rds:Describe*,
+  # iam:Get*) cannot be scoped to a resource ARN — AWS does not support
+  # resource-level permissions for them. The one destructive action,
+  # ec2:RevokeSecurityGroupIngress, IS scoped to this account and region.
+  - CKV_AWS_111
+  - CKV_AWS_356
+
+  # --- Constrained by the $0/month requirement ------------------------------
+
+  # VPC flow logs bill CloudWatch Logs ingestion, which has no free tier here.
+  - CKV2_AWS_11
+
+  # Customer-managed KMS keys cost ~$1/month each. DynamoDB and Lambda
+  # environment variables already use AWS-managed encryption at rest, and the
+  # env vars hold a table name and a topic ARN — not secrets.
+  - CKV_AWS_119
+  - CKV_AWS_173
+
+  # Point-in-time recovery on a table that is created and destroyed within a
+  # demo has nothing to recover to.
+  - CKV_AWS_28
+
+  # X-Ray tracing bills per trace beyond a small free tier and adds nothing to
+  # a single-function pipeline that already logs its own decisions.
+  - CKV_AWS_50
+
+  # Lambda code signing needs an AWS Signer profile and a signing pipeline.
+  # Out of proportion for a single-function demo deployed from source.
+  - CKV_AWS_272
+
+  # --- Genuine false positive -----------------------------------------------
+
+  # Both NACLs ARE attached to subnets, via aws_network_acl_association in
+  # nacl.tf. Checkov does not follow the separate association resource.
+  - CKV2_AWS_1
+
+  # --- Fixed, not skipped ---------------------------------------------------
+  # Four findings were genuinely fixable at no cost and were fixed rather than
+  # accepted, so they are deliberately absent from this list and will fail the
+  # build if they regress:
+  #
+  #   CKV_AWS_23   security group rules now carry descriptions
+  #   CKV_AWS_26   SNS topic encrypted with alias/aws/sns (+ KMS grant in iam.tf)
+  #   CKV2_AWS_12  the VPC default security group is stripped of all rules
+  #   CKV_AWS_232  the public NACL's SSH rule is scoped to var.my_ip

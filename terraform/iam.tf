@@ -37,7 +37,7 @@ data "aws_iam_policy_document" "lambda_readonly" {
     resources = ["*"]
   }
 
- 
+
   statement {
     effect = "Allow"
     actions = [
@@ -59,9 +59,30 @@ data "aws_iam_policy_document" "lambda_readonly" {
   }
 
   statement {
-    effect = "Allow"
+    effect    = "Allow"
     actions   = ["sns:Publish"]
-    resources = [aws_sns_topic.alerts.arn] 
+    resources = [aws_sns_topic.alerts.arn]
+  }
+
+  // The SNS topic is now encrypted with the AWS managed key (see sns.tf), so
+  // publishing requires permission to use that key as well as sns:Publish.
+  // Without this, every alert fails with KMSAccessDenied.
+  //
+  // Scoped by kms:ViaService rather than a key ARN on purpose: the
+  // alias/aws/sns key is created lazily by AWS the first time it is needed, so
+  // there is no stable ARN to reference at plan time. The condition restricts
+  // these actions to calls made through SNS in this region, which is tighter in
+  // practice than naming the key would be.
+  statement {
+    effect    = "Allow"
+    actions   = ["kms:GenerateDataKey*", "kms:Decrypt"]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["sns.${var.aws_region}.amazonaws.com"]
+    }
   }
 
   statement {
@@ -87,8 +108,8 @@ resource "aws_iam_policy" "lambda_readonly" {
 
 //IAM Role
 resource "aws_iam_role" "lambda_execution" {
-  name                = "auditor_lambda_role"
-  assume_role_policy  = data.aws_iam_policy_document.lambda_assume_role.json
+  name               = "auditor_lambda_role"
+  assume_role_policy = data.aws_iam_policy_document.lambda_assume_role.json
 }
 
 //Attach Policies

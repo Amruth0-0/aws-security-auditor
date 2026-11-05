@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push to the same branch cancels the run already in flight, so a quick
+# follow-up commit does not queue behind work that is already obsolete.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # `npm ci` rather than `npm install`: it installs exactly what the
+      # lockfile pins and fails if package.json and the lockfile disagree.
+      - name: Install dependencies
+        run: npm ci
+
+      # 108 tests, no AWS credentials needed. The scanners' rule matching and
+      # the whole scoring engine are pure functions precisely so that they can
+      # run here.
+      - name: Run tests
+        run: npm test
+
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.2
+          terraform_wrapper: false
+
+      - name: Check formatting
+        run: terraform -chdir=terraform fmt -check -recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # lambda.tf calls filebase64sha256("../dist/lambda.zip"), which Terraform
+      # evaluates during `validate` — so validation fails outright if the
+      # package does not exist. Building it here is not a workaround: it also
+      # proves the packaging script still works, which nothing else covers.
+      #
+      # (The cleaner long-term fix is a `data "archive_file"` resource so
+      # Terraform builds the zip itself. Left as-is for now because the deploy
+      # flow in the README depends on the script.)
+      - name: Build the Lambda package
+        run: ./scripts/package-lambda.sh
+
+      # -backend=false: no remote state is configured and none is needed to
+      # check the configuration, so this avoids requiring any credentials.
+      - name: Initialise
+        run: terraform -chdir=terraform init -backend=false
+
+      - name: Validate
+        run: terraform -chdir=terraform validate
+
+  iac-security:
+    name: IaC security scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Checkov
+        run: pip install --disable-pip-version-check checkov
+
+      # A security auditor whose own infrastructure is never scanned would be a
+      # poor advertisement for itself.
+      #
+      # This gate is BLOCKING, not soft-fail. Every accepted exception is listed
+      # in .checkov.yml with a written reason, so a NEW finding fails the build
+      # instead of scrolling past in a log nobody reads. Directory, framework
+      # and the skip list all come from that file.
+      - name: Scan Terraform
+        run: checkov --config-file .checkov.yml
