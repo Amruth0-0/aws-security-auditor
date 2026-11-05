@@ -1,0 +1,58 @@
+# ============================================================================
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored.
+#
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# Only alert_email and my_ip are required; everything else has a sensible
+# default in variables.tf.
+# ============================================================================
+
+# REQUIRED. Where security alerts are emailed. You must click the confirmation
+# link AWS sends after `terraform apply`, or alerts silently go nowhere.
+alert_email = "you@example.com"
+
+# REQUIRED. Your public IPv4 in CIDR form, for the demo EC2 security group.
+# Find it with: curl -s https://checkip.amazonaws.com
+my_ip = "203.0.113.4/32"
+
+# ----------------------------------------------------------------------------
+# Optional: deployment
+# ----------------------------------------------------------------------------
+# project_name       = "chainbreak"
+# aws_region         = "us-east-1"
+# vpc_cidr           = "10.0.0.0/16"
+# availability_zones = ["us-east-1a", "us-east-1b"]
+
+# ----------------------------------------------------------------------------
+# Optional: scheduling
+# ----------------------------------------------------------------------------
+# Enables the EventBridge SCHEDULE (not the function itself). Left false so a
+# fresh apply does not immediately start scanning on a timer.
+# enable_lambda   = false
+# rate_expression = "rate(5 minutes)"     # use rate(1 hour) for idle mode
+
+# ----------------------------------------------------------------------------
+# Optional: Phase 7 — auto-remediation
+# ----------------------------------------------------------------------------
+# THE DESTRUCTIVE SWITCH. Left false so the auditor runs the full revoke path
+# with AWS's DryRun flag — proving permissions and the exact rule match without
+# deleting anything. Set true only once you have seen "wouldRemediate" in the
+# logs and are happy with what it intends to do.
+# enable_remediation = false
+
+# The only patterns eligible for automatic revocation. Both lists must be
+# non-empty or the Node code fails closed and remediates nothing.
+# remediation_whitelist = {
+#   ports = [22, 3389]
+#   cidrs = ["0.0.0.0/0"]
+# }
+
+# Security groups the auditor must never touch, whatever it finds.
+# excluded_sg_ids = ["sg-0123456789abcdef0"]
+
+# ----------------------------------------------------------------------------
+# Optional: Phase 8 — blast radius scoring
+# ----------------------------------------------------------------------------
+# Score at or above which a finding is escalated to a human instead of being
+# auto-fixed. Lower it to escalate more aggressively; raise it to auto-fix more.
+# severity_threshold = 12

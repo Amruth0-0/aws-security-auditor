@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 //Trust Policy
 data "aws_iam_policy_document" "lambda_assume_role" {
   statement {
@@ -14,7 +16,12 @@ data "aws_iam_policy_document" "lambda_assume_role" {
 data "aws_iam_policy_document" "lambda_readonly" {
   statement {
     effect = "Allow"
-    actions   = ["ec2:DescribeInstances", "ec2:DescribeSecurityGroups"]
+    actions = [
+      "ec2:DescribeInstances",
+      "ec2:DescribeSecurityGroups",
+      "ec2:DescribeRouteTables",
+      "ec2:DescribeSubnets",
+    ]
     resources = ["*"]
   }
 
@@ -30,9 +37,18 @@ data "aws_iam_policy_document" "lambda_readonly" {
     resources = ["*"]
   }
 
+ 
   statement {
-    effect    = "Allow"
-    actions   = ["iam:GetRole", "iam:GetRolePolicy", "iam:ListAttachedRolePolicies"]
+    effect = "Allow"
+    actions = [
+      "iam:GetRole",
+      "iam:GetRolePolicy",
+      "iam:ListAttachedRolePolicies",
+      "iam:ListRolePolicies",
+      "iam:GetPolicy",
+      "iam:GetPolicyVersion",
+      "iam:GetInstanceProfile",
+    ]
     resources = ["*"]
   }
 
@@ -52,6 +68,12 @@ data "aws_iam_policy_document" "lambda_readonly" {
     effect    = "Allow"
     actions   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
     resources = ["*"] //Todo
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["ec2:RevokeSecurityGroupIngress"]
+    resources = ["arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:security-group/*"]
   }
 }
 
