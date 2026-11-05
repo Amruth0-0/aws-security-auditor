@@ -19,3 +19,8 @@ resource "aws_lambda_function" "auditor" {
       Project = var.project_name
     }
 }
+
+resource "aws_lambda_function_event_invoke_config" "auditor" {
+    function_name          = aws_lambda_function.auditor.function_name
+    maximum_retry_attempts = 0
+}

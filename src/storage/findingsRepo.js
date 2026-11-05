@@ -1,66 +1,69 @@
-import{DynamoDBClient} from "@aws-sdk/client-dynamodb"
-import {DynamoDBDocumentClient, PutCommand, ScanCommand, QueryCommand} from "@aws-sdk/lib-dynamodb";
-import config from "../config/env.js"
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, PutCommand, paginateScan, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import config from "../config/env.js";
 
 const client = new DynamoDBClient({});
-const docClient = DynamoDBDocumentClient.from(client)
-
-function generateFindingId(finding){
-    if(finding.findingId){
-        return finding.findingId
-    }
-
-    const resourceType = finding.resourceType || 'unknown';
-    const resourceId = finding.resourceId || 'unknown';
-    const findingType = finding.type || 'unknown';
-
-    return `${resourceType}-${resourceId}#${findingType}`;
-}
+const docClient = DynamoDBDocumentClient.from(client);
 
 export async function save(finding) {
-    finding.findingId = generateFindingId(finding)
+    if (!finding?.findingId) {
+        throw new Error(
+            "Finding is missing findingId — the scanner that produced it must set one " +
+            "(see the canonical shapes in src/storage/findingsRepo.js)"
+        );
+    }
 
-    finding.status = finding.remediated === true? "REMEDIATED" : "OPEN"
-    
-    finding.lastSeenAt = new Date().toISOString();
+    const item = {
+        ...finding,
+        status: finding.remediated === true ? "REMEDIATED" : "OPEN",
+        lastSeenAt: new Date().toISOString()
+    };
 
-    const command = new PutCommand({ TableName: config.dynamodbTableName, Item: finding});
+    const command = new PutCommand({ TableName: config.dynamodbTableName, Item: item });
 
-    try{
+    try {
         await docClient.send(command);
-        return finding
-    }catch(error){
-        throw new Error(`Failed to save finding ${finding.findingId}: ${error.message}`);
+        return item;
+    } catch (error) {
+        throw new Error(`Failed to save finding ${item.findingId}: ${error.message}`);
     }
 }
 
-export async function getAll(){
-    try{
-        const command = new ScanCommand({ TableName: config.dynamodbTableName});
-        const response = await docClient.send(command)
-         return response.Items  || [];
-    }catch(error){
+export async function getAll() {
+    try {
+        const items = [];
+        const pages = paginateScan(
+            { client: docClient },
+            { TableName: config.dynamodbTableName }
+        );
+
+        for await (const page of pages) {
+            items.push(...(page.Items || []));
+        }
+
+        return items;
+    } catch (error) {
         throw new Error(`Failed to scan findings: ${error.message}`);
     }
 }
 
 export async function getByStatus(status) {
-    try{
+    try {
         const command = new QueryCommand({
             TableName: config.dynamodbTableName,
-            IndexName : 'status-index',
+            IndexName: 'status-index',
             KeyConditionExpression: '#status = :status',
             ExpressionAttributeNames: {
-              '#status': 'status'
+                '#status': 'status'
             },
             ExpressionAttributeValues: {
                 ':status': status
             }
-          });
+        });
 
-          const response = await docClient.send(command);
-          return response.Items || [];
-    }catch(error){
+        const response = await docClient.send(command);
+        return response.Items || [];
+    } catch (error) {
         throw new Error(`Failed to query findings by status ${status}: ${error.message}`);
     }
 }
