@@ -47,6 +47,21 @@ export default Object.freeze({
         return parseRemediationWhitelist();
     },
 
+    
+    get remediationEnabled() {
+        return process.env.REMEDIATION_ENABLED === 'true';
+    },
+
+    get severityThreshold() {
+        const raw = process.env.SEVERITY_THRESHOLD;
+        if (!raw) return undefined;            // blastRadius falls back to its default
+        const parsed = Number(raw);
+        if (!Number.isFinite(parsed)) {
+            throw new Error(`SEVERITY_THRESHOLD must be a number, got "${raw}"`);
+        }
+        return parsed;
+    },
+
     isProduction: process.env.NODE_ENV === 'production',
     isTest: process.env.NODE_ENV === 'test',
 });
